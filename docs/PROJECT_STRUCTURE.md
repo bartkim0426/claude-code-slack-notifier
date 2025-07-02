@@ -82,7 +82,7 @@ git add .
 git commit -m "🎉 Initial commit - Claude Code Slack Notifier"
 
 # 5. GitHub 레포 생성 후 push
-git remote add origin https://github.com/YOUR_USERNAME/claude-code-slack-notifier.git
+git remote add origin https://github.com/bartkim0426/claude-code-slack-notifier.git
 git branch -M main
 git push -u origin main
 
@@ -93,7 +93,7 @@ git push origin v1.0.0
 
 ## 📝 마지막 체크리스트
 
-- [ ] README.md의 [your-username] 부분을 실제 GitHub 사용자명으로 변경
+- [ ] README.md의 bartkim0426 부분을 실제 GitHub 사용자명으로 변경
 - [ ] 실제 Slack webhook URL 예시는 가짜로 교체
 - [ ] 스크린샷/데모 GIF 추가 (선택사항)
 - [ ] GitHub Actions 설정 (선택사항)

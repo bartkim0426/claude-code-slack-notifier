@@ -48,7 +48,7 @@
 ### 1. One-Line Installation
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/[your-username]/claude-code-slack-notifier/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/bartkim0426/claude-code-slack-notifier/main/install.sh | bash
 ```
 
 ### 2. Configure Slack Webhook
@@ -81,7 +81,7 @@ If you prefer to install manually:
 
 ```bash
 # Clone the repository
-git clone https://github.com/[your-username]/claude-code-slack-notifier.git
+git clone https://github.com/bartkim0426/claude-code-slack-notifier.git
 cd claude-code-slack-notifier
 
 # Run setup
@@ -385,9 +385,9 @@ MIT License - see [LICENSE](LICENSE) file for details.
 
 ## 🔗 Links
 
-- [Report Issues](https://github.com/[your-username]/claude-code-slack-notifier/issues)
-- [Request Features](https://github.com/[your-username]/claude-code-slack-notifier/issues/new?labels=enhancement)
-- [Discussions](https://github.com/[your-username]/claude-code-slack-notifier/discussions)
+- [Report Issues](https://github.com/bartkim0426/claude-code-slack-notifier/issues)
+- [Request Features](https://github.com/bartkim0426/claude-code-slack-notifier/issues/new?labels=enhancement)
+- [Discussions](https://github.com/bartkim0426/claude-code-slack-notifier/discussions)
 - [Claude Code Documentation](https://docs.anthropic.com/en/docs/claude-code)
 
 ---
@@ -397,5 +397,5 @@ MIT License - see [LICENSE](LICENSE) file for details.
 </p>
 
 <p align="center">
-  <a href="https://github.com/[your-username]/claude-code-slack-notifier/stargazers">⭐ Star us on GitHub!</a>
+  <a href="https://github.com/bartkim0426/claude-code-slack-notifier/stargazers">⭐ Star us on GitHub!</a>
 </p>

@@ -43,7 +43,7 @@ git clone https://github.com/YOUR_USERNAME/claude-code-slack-notifier.git
 cd claude-code-slack-notifier
 
 # Add upstream remote
-git remote add upstream https://github.com/[original-username]/claude-code-slack-notifier.git
+git remote add upstream https://github.com/bartkim0426/claude-code-slack-notifier.git
 
 # Install development dependencies
 ./scripts/setup-dev.sh
