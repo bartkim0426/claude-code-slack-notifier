@@ -39,11 +39,11 @@ fi
 echo "📥 Hook 스크립트를 다운로드합니다..."
 
 # Notification Hook
-curl -fsSL "https://raw.githubusercontent.com/bartkim0426/claude-slack-notifier/main/hooks/notification-hook.sh" \
+curl -fsSL "https://raw.githubusercontent.com/bartkim0426/claude-code-slack-notifier/main/hooks/notification-hook.sh" \
     -o "$INSTALL_DIR/hooks/notification-hook.sh"
 
 # Stop Hook
-curl -fsSL "https://raw.githubusercontent.com/bartkim0426/claude-slack-notifier/main/hooks/stop-hook.sh" \
+curl -fsSL "https://raw.githubusercontent.com/bartkim0426/claude-code-slack-notifier/main/hooks/stop-hook.sh" \
     -o "$INSTALL_DIR/hooks/stop-hook.sh"
 
 # 실행 권한 부여
@@ -159,4 +159,4 @@ echo "   $ claude-slack-doctor"
 echo ""
 echo "3. Claude Code를 재시작하면 알림이 작동합니다!"
 echo ""
-echo "도움말: https://github.com/bartkim0426/claude-slack-notifier"
+echo "도움말: https://github.com/bartkim0426/claude-code-slack-notifier"
