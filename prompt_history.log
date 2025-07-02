@@ -1,0 +1,8 @@
+[2025-07-02 17:13:15] scurl -fsSL https://raw.githubusercontent.com/bartkim0426/claude-code-slack-notifier/main/install.sh | bash
+🚀 Claude Code Slack Notifier 설치를 시작합니다...
+
+📥 Hook 스크립트를 다운로드합니다...
+curl: (56) The requested URL returned error: 404 | 문제 제대로 고민해서 해결해 지금 10분째 너가 이거 제대로 모사혹 있는데 git push 해가면서 테스트까지 해서 잘 되는지 확인까지 해
+---
+[2025-07-02 17:13:30] claude-slack-config 실행시키면 nano 말고 vim 뜨면 좋겠어 왜 나노가 뜨냐... ㅠㅠ 그리고 그냥 파일 안 뜨고 복붙해서 넣을수 있게 바꾸는거 어려워? 안 어려우면 그냥 쉘에서 할 수 있게 하게
+---

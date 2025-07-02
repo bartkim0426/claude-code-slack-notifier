@@ -55,7 +55,89 @@ echo "🔧 유틸리티 스크립트를 설치합니다..."
 # claude-slack-config 명령어
 cat > "$HOME/.local/bin/claude-slack-config" << 'EOF'
 #!/bin/bash
-${EDITOR:-nano} "$HOME/.claude-slack-notifier/config"
+
+CONFIG_FILE="$HOME/.claude-slack-notifier/config"
+
+show_help() {
+    echo "Claude Slack Notifier 설정 도구"
+    echo ""
+    echo "사용법:"
+    echo "  claude-slack-config                  인터렉티브 모드 (기본)"
+    echo "  claude-slack-config -i, --interactive  인터렉티브 모드"
+    echo "  claude-slack-config -e, --edit        편집기 모드"
+    echo "  claude-slack-config -h, --help        도움말"
+}
+
+interactive_mode() {
+    echo "🔧 Claude Slack Notifier 설정"
+    echo "=============================="
+    echo ""
+    
+    # 현재 설정 표시
+    if [ -f "$CONFIG_FILE" ]; then
+        current_url=$(grep "SLACK_WEBHOOK_URL=" "$CONFIG_FILE" | cut -d'"' -f2)
+        if [ -n "$current_url" ] && [ "$current_url" != "" ]; then
+            echo "현재 Webhook URL: ${current_url:0:50}..."
+        else
+            echo "현재 Webhook URL: 설정되지 않음"
+        fi
+        echo ""
+    fi
+    
+    echo "새 Slack Webhook URL을 입력하세요:"
+    echo "(예: https://hooks.slack.com/services/T00000000/B00000000/XXXXXXXXXXXXXXXXXXXXXXXX)"
+    echo ""
+    read -p "Webhook URL: " webhook_url
+    
+    if [ -z "$webhook_url" ]; then
+        echo "❌ URL이 입력되지 않았습니다."
+        exit 1
+    fi
+    
+    # URL 검증
+    if [[ ! "$webhook_url" =~ ^https://hooks\.slack\.com/services/ ]]; then
+        echo "⚠️  경고: Slack Webhook URL 형식이 아닌 것 같습니다."
+        read -p "계속하시겠습니까? (y/N): " confirm
+        if [[ ! "$confirm" =~ ^[Yy]$ ]]; then
+            echo "설정이 취소되었습니다."
+            exit 1
+        fi
+    fi
+    
+    # 설정 파일 업데이트
+    sed -i.bak "s|SLACK_WEBHOOK_URL=\".*\"|SLACK_WEBHOOK_URL=\"$webhook_url\"|" "$CONFIG_FILE"
+    
+    echo ""
+    echo "✅ Slack Webhook URL이 설정되었습니다!"
+    echo ""
+    echo "설정을 확인하려면: claude-slack-doctor"
+}
+
+editor_mode() {
+    ${EDITOR:-vim} "$CONFIG_FILE"
+}
+
+# 메인 로직
+case "$1" in
+    -h|--help)
+        show_help
+        ;;
+    -e|--edit)
+        editor_mode
+        ;;
+    -i|--interactive)
+        interactive_mode
+        ;;
+    "")
+        interactive_mode
+        ;;
+    *)
+        echo "알 수 없는 옵션: $1"
+        echo ""
+        show_help
+        exit 1
+        ;;
+esac
 EOF
 
 # claude-slack-doctor 명령어
