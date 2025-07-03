@@ -3,7 +3,20 @@
 # Claude Code Stop Hook - 작업 완료 시 상세 Slack 알림
 # 작업 내용, 실행한 명령어, 수정한 파일 등을 포함한 종합 리포트
 
-WEBHOOK_URL="https://hooks.slack.com/services/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"
+# 설정 파일 로드
+CONFIG_FILE="$HOME/.claude-slack-notifier/config"
+if [ -f "$CONFIG_FILE" ]; then
+    source "$CONFIG_FILE"
+else
+    echo "Error: Config file not found at $CONFIG_FILE" >&2
+    exit 1
+fi
+
+# 설정 확인
+if [ -z "$SLACK_WEBHOOK_URL" ]; then
+    echo "Error: SLACK_WEBHOOK_URL not set in config" >&2
+    exit 1
+fi
 
 # 색상 정의
 COLOR_SUCCESS="#36a64f"

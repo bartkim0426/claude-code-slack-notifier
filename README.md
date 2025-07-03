@@ -53,13 +53,17 @@ curl -fsSL https://raw.githubusercontent.com/bartkim0426/claude-code-slack-notif
 
 ### 2. Configure Slack Webhook
 
+The installer will prompt you for your Slack webhook URL. You can also configure it later:
+
 ```bash
-# Open configuration
-claude-slack-config
+# Edit configuration file
+vim ~/.claude-slack-notifier/config
 
 # Add your webhook URL:
-SLACK_WEBHOOK_URL=https://hooks.slack.com/services/YOUR/WEBHOOK/URL
+SLACK_WEBHOOK_URL="https://hooks.slack.com/services/YOUR/WEBHOOK/URL"
 ```
+
+⚠️ **Important**: Never commit your webhook URL to version control!
 
 ### 3. Done! 🎉
 
@@ -87,7 +91,10 @@ cd claude-code-slack-notifier
 # Run setup
 ./setup.sh
 
-# Configure
+# Configure (you'll be prompted for webhook URL)
+./install.sh
+
+# Or manually edit config
 vim ~/.claude-slack-notifier/config
 ```
 

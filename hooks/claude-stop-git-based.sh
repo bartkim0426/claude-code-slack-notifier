@@ -3,7 +3,20 @@
 # Claude Code Stop Hook - 로컬 작업 추적 버전
 # transcript 대신 로컬에서 작업 내용을 추적
 
-WEBHOOK_URL="https://hooks.slack.com/services/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"
+# 설정 파일 로드
+CONFIG_FILE="$HOME/.claude-slack-notifier/config"
+if [ -f "$CONFIG_FILE" ]; then
+    source "$CONFIG_FILE"
+else
+    echo "Error: Config file not found at $CONFIG_FILE" >&2
+    exit 1
+fi
+
+# 설정 확인
+if [ -z "$SLACK_WEBHOOK_URL" ]; then
+    echo "Error: SLACK_WEBHOOK_URL not set in config" >&2
+    exit 1
+fi
 WORK_LOG="$HOME/.claude-work-history.log"
 
 # 입력 받기 (사용하지 않더라도 받아야 함)

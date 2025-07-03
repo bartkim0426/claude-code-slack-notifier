@@ -3,7 +3,20 @@
 # Claude Code Stop Hook - 실제 transcript 파일을 읽어서 작업 내용 분석
 # transcript_path에서 JSONL 파일을 읽어 작업 내용을 추출
 
-WEBHOOK_URL="https://hooks.slack.com/services/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"
+# 설정 파일 로드
+CONFIG_FILE="$HOME/.claude-slack-notifier/config"
+if [ -f "$CONFIG_FILE" ]; then
+    source "$CONFIG_FILE"
+else
+    echo "Error: Config file not found at $CONFIG_FILE" >&2
+    exit 1
+fi
+
+# 설정 확인
+if [ -z "$SLACK_WEBHOOK_URL" ]; then
+    echo "Error: SLACK_WEBHOOK_URL not set in config" >&2
+    exit 1
+fi
 
 # 색상 정의
 COLOR_SUCCESS="#36a64f"

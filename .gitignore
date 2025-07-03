@@ -1,0 +1,17 @@
+# Config files with sensitive data
+config
+.env
+
+# Logs
+*.log
+
+# OS files
+.DS_Store
+
+# Editor files
+.vscode/
+.idea/
+
+# Test files
+test-*.json
+*.test.sh

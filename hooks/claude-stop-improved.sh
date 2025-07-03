@@ -3,7 +3,20 @@
 # Claude Code Stop Hook - 개선된 버전
 # 다양한 JSONL 구조에 대응
 
-WEBHOOK_URL="https://hooks.slack.com/services/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"
+# 설정 파일 로드
+CONFIG_FILE="$HOME/.claude-slack-notifier/config"
+if [ -f "$CONFIG_FILE" ]; then
+    source "$CONFIG_FILE"
+else
+    echo "Error: Config file not found at $CONFIG_FILE" >&2
+    exit 1
+fi
+
+# 설정 확인
+if [ -z "$SLACK_WEBHOOK_URL" ]; then
+    echo "Error: SLACK_WEBHOOK_URL not set in config" >&2
+    exit 1
+fi
 DEBUG_LOG="$HOME/claude-stop-parsing.log"
 
 # 입력 받기
