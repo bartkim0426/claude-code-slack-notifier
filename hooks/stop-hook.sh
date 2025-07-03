@@ -50,17 +50,39 @@ if [ ! -f "$TRANSCRIPT_PATH" ]; then
     exit 0
 fi
 
+# 시작 시간과 종료 시간 추출
+START_TIME=$(head -5 "$TRANSCRIPT_PATH" | jq -r 'select(.timestamp != null) | .timestamp' 2>/dev/null | head -1)
+END_TIME=$(tail -5 "$TRANSCRIPT_PATH" | jq -r 'select(.timestamp != null) | .timestamp' 2>/dev/null | tail -1)
+
+# 시간 포맷팅
+if [ -n "$START_TIME" ] && [ "$START_TIME" != "null" ]; then
+    START_TIME_FORMATTED=$(date -j -f "%Y-%m-%dT%H:%M:%S" "${START_TIME%%.*}" "+%H:%M" 2>/dev/null || echo "")
+else
+    START_TIME_FORMATTED=""
+fi
+
+if [ -n "$END_TIME" ] && [ "$END_TIME" != "null" ]; then
+    END_TIME_FORMATTED=$(date -j -f "%Y-%m-%dT%H:%M:%S" "${END_TIME%%.*}" "+%H:%M" 2>/dev/null || echo "")
+else
+    END_TIME_FORMATTED=""
+fi
+
+# 토큰 사용량 추출
+TOTAL_TOKENS=$(tail -200 "$TRANSCRIPT_PATH" | \
+    jq -r 'select(.message.usage != null) | .message.usage | (.input_tokens // 0) + (.output_tokens // 0)' 2>/dev/null | \
+    awk '{sum+=$1} END {print sum}')
+
 # 마지막 assistant 메시지들 추출
-LAST_MESSAGES=$(tail -100 "$TRANSCRIPT_PATH" | \
+LAST_MESSAGES=$(tail -200 "$TRANSCRIPT_PATH" | \
     jq -r '
         select(.type == "assistant" and .message.content != null) | 
         .message.content[] | 
         select(.type == "text") | 
         .text
     ' 2>/dev/null | \
-    tail -3 | \
+    tail -5 | \
     awk 'NR>1{print "\n"} {print}' | \
-    head -c 1000)
+    head -c 3000)
 
 echo "Messages found: ${#LAST_MESSAGES} chars" >> "$DEBUG_LOG"
 
@@ -101,9 +123,9 @@ ERRORS=$(tail -100 "$TRANSCRIPT_PATH" | \
 SUMMARY_INFO=$(jq -r 'select(.type == "summary") | .summary' "$TRANSCRIPT_PATH" 2>/dev/null | tail -1)
 
 # 통계
-COMMAND_COUNT=$(echo "$BASH_COMMANDS" | grep -c '^•' || echo "0")
-FILE_COUNT=$(echo "$FILE_OPERATIONS" | grep -c '^•' || echo "0")
-ERROR_COUNT=$(echo "$ERRORS" | grep -c '^⚠️' || echo "0")
+COMMAND_COUNT=$(echo "$BASH_COMMANDS" | grep -c '^•' 2>/dev/null || echo "0")
+FILE_COUNT=$(echo "$FILE_OPERATIONS" | grep -c '^•' 2>/dev/null || echo "0")
+ERROR_COUNT=$(echo "$ERRORS" | grep -c '^⚠️' 2>/dev/null || echo "0")
 
 # 작업 요약 생성
 if [ -n "$SUMMARY_INFO" ] && [ "$SUMMARY_INFO" != "null" ]; then
@@ -123,13 +145,6 @@ SLACK_JSON=$(cat <<EOF
             "color": "#36a64f",
             "blocks": [
                 {
-                    "type": "header",
-                    "text": {
-                        "type": "plain_text",
-                        "text": "✅ 작업 완료",
-                        "emoji": true
-                    }
-                },
                 {
                     "type": "section",
                     "fields": [
@@ -139,16 +154,12 @@ SLACK_JSON=$(cat <<EOF
                         },
                         {
                             "type": "mrkdwn",
-                            "text": "*시간:*\n$SHORT_TIME"
-                        },
+                            "text": "*시간:*\n${START_TIME_FORMATTED:-$SHORT_TIME}${END_TIME_FORMATTED:+ → $END_TIME_FORMATTED}"
+                        }${TOTAL_TOKENS:+,
                         {
                             "type": "mrkdwn",
-                            "text": "*명령어:*\n${COMMAND_COUNT}개 실행"
-                        },
-                        {
-                            "type": "mrkdwn",
-                            "text": "*파일:*\n${FILE_COUNT}개 작업"
-                        }
+                            "text": "*토큰:*\n${TOTAL_TOKENS}개"
+                        }}
                     ]
                 },
                 {
@@ -164,27 +175,34 @@ SLACK_JSON=$(cat <<EOF
 EOF
 )
 
-# Bash 명령어가 있으면 추가
-if [ "$COMMAND_COUNT" -gt 0 ] && [ -n "$BASH_COMMANDS" ]; then
+# 통계 섹션 추가 (명령어나 파일 작업이 있을 때만)
+if [ "$COMMAND_COUNT" -gt 0 ] || [ "$FILE_COUNT" -gt 0 ]; then
     SLACK_JSON="${SLACK_JSON},
                 {
                     \"type\": \"section\",
-                    \"text\": {
-                        \"type\": \"mrkdwn\",
-                        \"text\": \"*🔧 실행한 명령어:*\n\`\`\`${BASH_COMMANDS}\`\`\`\"
-                    }
-                }"
-fi
-
-# 파일 작업이 있으면 추가
-if [ "$FILE_COUNT" -gt 0 ] && [ -n "$FILE_OPERATIONS" ]; then
-    SLACK_JSON="${SLACK_JSON},
-                {
-                    \"type\": \"section\",
-                    \"text\": {
-                        \"type\": \"mrkdwn\",
-                        \"text\": \"*📄 파일 작업:*\n${FILE_OPERATIONS}\"
-                    }
+                    \"fields\": ["
+    
+    if [ "$COMMAND_COUNT" -gt 0 ]; then
+        SLACK_JSON="${SLACK_JSON}
+                        {
+                            \"type\": \"mrkdwn\",
+                            \"text\": \"*명령어:*\n${COMMAND_COUNT}개\"
+                        }"
+        if [ "$FILE_COUNT" -gt 0 ]; then
+            SLACK_JSON="${SLACK_JSON},"
+        fi
+    fi
+    
+    if [ "$FILE_COUNT" -gt 0 ]; then
+        SLACK_JSON="${SLACK_JSON}
+                        {
+                            \"type\": \"mrkdwn\",
+                            \"text\": \"*파일:*\n${FILE_COUNT}개\"
+                        }"
+    fi
+    
+    SLACK_JSON="${SLACK_JSON}
+                    ]
                 }"
 fi
 
@@ -217,7 +235,7 @@ SLACK_JSON="${SLACK_JSON},
 }"
 
 # Slack 전송
-echo "$SLACK_JSON" | curl -s -X POST -H 'Content-type: application/json' --data @- "$WEBHOOK_URL"
+echo "$SLACK_JSON" | curl -s -X POST -H 'Content-type: application/json' --data @- "$SLACK_WEBHOOK_URL"
 
 echo "Notification sent successfully" >> "$DEBUG_LOG"
 echo "---" >> "$DEBUG_LOG"

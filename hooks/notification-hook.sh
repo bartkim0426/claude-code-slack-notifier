@@ -41,7 +41,9 @@ TRANSCRIPT_PATH=$(echo "$INPUT" | jq -r '.transcript_path // ""')
 USER_PROMPT=""
 if [ -f "$TRANSCRIPT_PATH" ]; then
     # 마지막 사용자 메시지 찾기 - Claude Code의 실제 구조에 맞춤
-    USER_PROMPT=$(jq -r 'select(.message.role == "user" and .message.content[0].type == "text") | .message.content[0].text' "$TRANSCRIPT_PATH" 2>/dev/null | tail -1)
+    # tail -n 50으로 최근 50개 라인을 보고, 마지막 사용자 메시지의 전체 내용을 가져옴
+    USER_PROMPT=$(tail -n 100 "$TRANSCRIPT_PATH" | jq -r 'select(.message.role == "user" and .message.content[0].type == "text") | .message.content[0].text' 2>/dev/null | tail -1 | head -c 1500)
+    echo "User prompt length: ${#USER_PROMPT} chars" >> "$DEBUG_LOG"
     echo "User prompt: $USER_PROMPT" >> "$DEBUG_LOG"
 fi
 
@@ -238,7 +240,7 @@ fi
 
 # Slack 전송
 if [ -n "$SLACK_JSON" ]; then
-    RESPONSE=$(echo "$SLACK_JSON" | curl -s -X POST -H 'Content-type: application/json' --data @- "$WEBHOOK_URL" 2>&1)
+    RESPONSE=$(echo "$SLACK_JSON" | curl -s -X POST -H 'Content-type: application/json' --data @- "$SLACK_WEBHOOK_URL" 2>&1)
     echo "Slack response: $RESPONSE" >> "$DEBUG_LOG"
 fi
 
