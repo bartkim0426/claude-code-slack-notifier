@@ -32,7 +32,7 @@ echo "---" >> "$DEBUG_LOG"
 # Slack에도 간단한 알림
 KEYS=$(jq -r 'keys | join(", ")' < "$LOG_FILE" 2>/dev/null || echo "parse error")
 
-cat <<EOF | curl -s -X POST -H 'Content-type: application/json' --data @- https://hooks.slack.com/services/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
+cat <<EOF | curl -s -X POST -H 'Content-type: application/json' --data @- https://hooks.slack.com/services/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
 {
     "text": "🔍 Stop Hook 데이터 구조 분석 완료",
     "blocks": [

@@ -202,22 +202,20 @@ if command -v jq &> /dev/null; then
     # Backup 생성
     cp "$CLAUDE_SETTINGS" "$CLAUDE_SETTINGS.backup"
     
-    # Hook 추가
-    jq '.hooks.Notification = {
-        "": {
-            "hooks": [{
-                "type": "command",
-                "command": "'"$INSTALL_DIR/hooks/notification-hook.sh"'"
-            }]
-        }
-    } | .hooks.Stop = {
-        "": {
-            "hooks": [{
-                "type": "command",
-                "command": "'"$INSTALL_DIR/hooks/stop-hook.sh"'"
-            }]
-        }
-    }' "$CLAUDE_SETTINGS" > "$CLAUDE_SETTINGS.tmp" && mv "$CLAUDE_SETTINGS.tmp" "$CLAUDE_SETTINGS"
+    # Hook 추가 - Notification과 Stop 이벤트 사용
+    jq '.hooks.Notification = (.hooks.Notification // []) + [{
+        "matcher": "*",
+        "hooks": [{
+            "type": "command",
+            "command": "'"$INSTALL_DIR/hooks/notification-hook.sh"'"
+        }]
+    }] | .hooks.Stop = (.hooks.Stop // []) + [{
+        "matcher": "*", 
+        "hooks": [{
+            "type": "command",
+            "command": "'"$INSTALL_DIR/hooks/stop-hook.sh"'"
+        }]
+    }]' "$CLAUDE_SETTINGS" > "$CLAUDE_SETTINGS.tmp" && mv "$CLAUDE_SETTINGS.tmp" "$CLAUDE_SETTINGS"
     
     echo -e "${GREEN}✓ Hook이 자동으로 등록되었습니다!${NC}"
 else

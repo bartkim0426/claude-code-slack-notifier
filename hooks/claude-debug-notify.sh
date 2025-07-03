@@ -25,7 +25,7 @@ if [ "$NOTIFICATION_TYPE" = "permission_request" ]; then
     echo "Permission request detected, sending Slack..." >> "$LOG_FILE"
     echo '{"text":"🔔 Notification Hook Test - Permission Request"}' | \
     curl -X POST -H 'Content-type: application/json' \
-    --data @- https://hooks.slack.com/services/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 \
+    --data @- https://hooks.slack.com/services/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 \
     >> "$LOG_FILE" 2>&1
 fi
 

@@ -3,7 +3,7 @@
 # Claude Code Stop Hook - 개선된 버전
 # 다양한 JSONL 구조에 대응
 
-WEBHOOK_URL="https://hooks.slack.com/services/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"
+WEBHOOK_URL="https://hooks.slack.com/services/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"
 DEBUG_LOG="$HOME/claude-stop-parsing.log"
 
 # 입력 받기

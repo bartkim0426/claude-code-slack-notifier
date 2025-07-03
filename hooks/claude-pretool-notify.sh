@@ -3,7 +3,7 @@
 # PreToolUse Hook - 위험한 작업 전 알림
 # 특정 도구 사용 전에 Slack 알림 전송
 
-WEBHOOK_URL="https://hooks.slack.com/services/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"
+WEBHOOK_URL="https://hooks.slack.com/services/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"
 
 # 입력 받기
 INPUT=$(cat)

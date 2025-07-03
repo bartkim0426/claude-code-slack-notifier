@@ -3,7 +3,7 @@
 # Claude Code Stop Hook - 로컬 작업 추적 버전
 # transcript 대신 로컬에서 작업 내용을 추적
 
-WEBHOOK_URL="https://hooks.slack.com/services/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"
+WEBHOOK_URL="https://hooks.slack.com/services/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"
 WORK_LOG="$HOME/.claude-work-history.log"
 
 # 입력 받기 (사용하지 않더라도 받아야 함)

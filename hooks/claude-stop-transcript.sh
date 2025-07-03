@@ -3,7 +3,7 @@
 # Claude Code Stop Hook - 실제 transcript 파일을 읽어서 작업 내용 분석
 # transcript_path에서 JSONL 파일을 읽어 작업 내용을 추출
 
-WEBHOOK_URL="https://hooks.slack.com/services/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"
+WEBHOOK_URL="https://hooks.slack.com/services/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"
 
 # 색상 정의
 COLOR_SUCCESS="#36a64f"

@@ -3,7 +3,7 @@
 # Claude Code Slack Notification Script
 # 사용법: Stop hook에서 이 스크립트를 호출
 
-WEBHOOK_URL="https://hooks.slack.com/services/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"
+WEBHOOK_URL="https://hooks.slack.com/services/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"
 
 # 입력 JSON을 임시 파일에 저장
 TEMP_FILE=$(mktemp)

@@ -3,7 +3,7 @@
 # Claude Code Notification Hook - 심플 버전
 # 요청 내용을 간결하게 표시
 
-WEBHOOK_URL="https://hooks.slack.com/services/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"
+WEBHOOK_URL="https://hooks.slack.com/services/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"
 
 # 입력 받기
 INPUT=$(cat)

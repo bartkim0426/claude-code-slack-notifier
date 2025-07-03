@@ -3,7 +3,7 @@
 # Claude Code Notification Handler
 # Notification Hook에서 호출하는 스크립트
 
-WEBHOOK_URL="https://hooks.slack.com/services/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"
+WEBHOOK_URL="https://hooks.slack.com/services/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"
 
 # 입력 JSON 읽기
 INPUT=$(cat)

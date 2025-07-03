@@ -3,7 +3,7 @@
 # Claude Code Stop Hook - 실제 JSONL 구조에 맞춘 버전
 # Claude Code의 실제 transcript 형식을 정확히 파싱
 
-WEBHOOK_URL="https://hooks.slack.com/services/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"
+WEBHOOK_URL="https://hooks.slack.com/services/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"
 DEBUG_LOG="$HOME/claude-stop-final.log"
 
 # 입력 받기

@@ -3,7 +3,7 @@
 # Claude Code Stop Hook - 심플 버전
 # 기본 정보만 포함하되 안정적으로 작동
 
-WEBHOOK_URL="https://hooks.slack.com/services/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"
+WEBHOOK_URL="https://hooks.slack.com/services/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"
 
 # 입력 JSON을 변수에 저장
 INPUT=$(cat)

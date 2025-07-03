@@ -3,7 +3,7 @@
 # Claude Code Notification Hook - 요청 내용 상세 표시 버전
 # Claude가 무엇을 하려는지 구체적으로 보여줌
 
-WEBHOOK_URL="https://hooks.slack.com/services/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"
+WEBHOOK_URL="https://hooks.slack.com/services/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"
 DEBUG_LOG="$HOME/claude-notification-detail.log"
 
 # 입력 JSON 읽기

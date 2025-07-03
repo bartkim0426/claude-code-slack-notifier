@@ -3,7 +3,7 @@
 # Claude Code Stop Hook - 작업 완료 시 상세 Slack 알림
 # 작업 내용, 실행한 명령어, 수정한 파일 등을 포함한 종합 리포트
 
-WEBHOOK_URL="https://hooks.slack.com/services/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"
+WEBHOOK_URL="https://hooks.slack.com/services/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"
 
 # 색상 정의
 COLOR_SUCCESS="#36a64f"

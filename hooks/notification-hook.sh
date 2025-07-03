@@ -3,7 +3,7 @@
 # Claude Code Notification Hook - 요청 내용 상세 표시 버전
 # Claude가 무엇을 하려는지 구체적으로 보여줌
 
-WEBHOOK_URL="https://hooks.slack.com/services/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"
+WEBHOOK_URL="https://hooks.slack.com/services/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"
 DEBUG_LOG="$HOME/claude-notification-detail.log"
 
 # 입력 JSON 읽기
@@ -21,10 +21,19 @@ FULL_TIME=$(date "+%Y-%m-%d %H:%M:%S")
 # JSON 파싱
 NOTIFICATION_TYPE=$(echo "$INPUT" | jq -r '.notification_type // "unknown"')
 MESSAGE=$(echo "$INPUT" | jq -r '.message // ""')
+TRANSCRIPT_PATH=$(echo "$INPUT" | jq -r '.transcript_path // ""')
 
-# notification_type에 따른 처리
-case "$NOTIFICATION_TYPE" in
-    "permission_request")
+# transcript에서 마지막 사용자 프롬프트 추출
+USER_PROMPT=""
+if [ -f "$TRANSCRIPT_PATH" ]; then
+    # 마지막 사용자 메시지 찾기 - Claude Code의 실제 구조에 맞춤
+    USER_PROMPT=$(jq -r 'select(.message.role == "user" and .message.content[0].type == "text") | .message.content[0].text' "$TRANSCRIPT_PATH" 2>/dev/null | tail -1)
+    echo "User prompt: $USER_PROMPT" >> "$DEBUG_LOG"
+fi
+
+# 메시지 내용으로 직접 판단
+if echo "$MESSAGE" | grep -qi "permission"; then
+    # 권한 요청 메시지
         # 메시지에서 중요 정보 추출
         ACTION=""
         DETAILS=""
@@ -32,7 +41,7 @@ case "$NOTIFICATION_TYPE" in
         COLOR="#ff9900"
         
         # 메시지 내용 분석
-        if echo "$MESSAGE" | grep -qi "bash"; then
+        if echo "$MESSAGE" | grep -qiE "(Bash|bash command)"; then
             # Bash 명령어 실행 요청
             COMMAND=$(echo "$MESSAGE" | grep -oE '`[^`]+`' | head -1 | tr -d '`')
             if [ -z "$COMMAND" ]; then
@@ -48,11 +57,11 @@ case "$NOTIFICATION_TYPE" in
                 ACTION="⚠️ 위험한 명령어"
             fi
             
-        elif echo "$MESSAGE" | grep -qiE "(write|create|edit|modify)"; then
+        elif echo "$MESSAGE" | grep -qiE "(Write|Edit|MultiEdit|write|create|edit|modify)"; then
             # 파일 작업 요청
-            FILE=$(echo "$MESSAGE" | grep -oE '`[^`]+`' | head -1 | tr -d '`')
-            ACTION="파일 작업"
-            DETAILS="대상: \`${FILE}\`"
+            TOOL_NAME=$(echo "$MESSAGE" | grep -oE '(Write|Edit|MultiEdit)' | head -1)
+            ACTION="${TOOL_NAME:-파일} 사용 요청"
+            DETAILS="도구: ${TOOL_NAME:-파일 작업}"
             
         elif echo "$MESSAGE" | grep -qiE "(delete|remove)"; then
             # 삭제 작업
@@ -64,14 +73,21 @@ case "$NOTIFICATION_TYPE" in
             
         elif echo "$MESSAGE" | grep -qiE "(read|view|open)"; then
             # 읽기 작업
-            FILE=$(echo "$MESSAGE" | grep -oE '`[^`]+`' | head -1 | tr -d '`')
-            ACTION="파일 읽기"
-            DETAILS="대상: \`${FILE}\`"
+            # 메시지에서 tool 이름 추출 (Read, Write, Edit 등)
+            TOOL_NAME=$(echo "$MESSAGE" | grep -oE '(Read|Write|Edit|Bash|Grep|Glob|LS)' | head -1)
+            ACTION="${TOOL_NAME:-파일} 사용 요청"
+            DETAILS="도구: ${TOOL_NAME:-알 수 없음}"
             
         else
-            # 기타 작업
-            ACTION="권한 요청"
-            DETAILS="${MESSAGE:0:200}"
+            # 기타 작업 - tool 이름 찾기 시도
+            TOOL_NAME=$(echo "$MESSAGE" | grep -oE '(Task|TodoWrite|TodoRead|WebFetch|WebSearch|NotebookRead|NotebookEdit)' | head -1)
+            if [ -n "$TOOL_NAME" ]; then
+                ACTION="${TOOL_NAME} 사용 요청"
+                DETAILS="도구: ${TOOL_NAME}"
+            else
+                ACTION="권한 요청"
+                DETAILS="${MESSAGE:0:200}"
+            fi
         fi
         
         # Slack 메시지 구성
@@ -95,6 +111,13 @@ case "$NOTIFICATION_TYPE" in
                     "text": {
                         "type": "mrkdwn",
                         "text": "*요청 내용:*\n${DETAILS}"
+                    }
+                },
+                {
+                    "type": "section",
+                    "text": {
+                        "type": "mrkdwn",
+                        "text": "*사용자 프롬프트:*\n> ${USER_PROMPT:-'프롬프트를 찾을 수 없습니다'}"
                     }
                 },
                 {
@@ -143,10 +166,9 @@ case "$NOTIFICATION_TYPE" in
 }
 EOF
 )
-        ;;
-    
-    "idle")
-        # 대기 중 알림 - 너무 자주 오면 주석 처리
+
+elif echo "$MESSAGE" | grep -qi "waiting for your input"; then
+    # 대기 중 알림 - 너무 자주 오면 주석 처리
         SLACK_JSON=$(cat <<EOF
 {
     "text": "💤 Claude Code 대기 중",
@@ -171,10 +193,9 @@ EOF
 }
 EOF
 )
-        ;;
-    
-    *)
-        # 기타 알림
+
+else
+    # 기타 알림
         SLACK_JSON=$(cat <<EOF
 {
     "text": "📢 Claude Code 알림",
@@ -199,12 +220,12 @@ EOF
 }
 EOF
 )
-        ;;
-esac
+fi
 
 # Slack 전송
 if [ -n "$SLACK_JSON" ]; then
-    echo "$SLACK_JSON" | curl -s -X POST -H 'Content-type: application/json' --data @- "$WEBHOOK_URL" >/dev/null 2>&1
+    RESPONSE=$(echo "$SLACK_JSON" | curl -s -X POST -H 'Content-type: application/json' --data @- "$WEBHOOK_URL" 2>&1)
+    echo "Slack response: $RESPONSE" >> "$DEBUG_LOG"
 fi
 
 echo "---" >> "$DEBUG_LOG"
