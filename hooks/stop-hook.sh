@@ -112,47 +112,80 @@ fi
 
 echo "Total tokens calculated: $TOTAL_TOKENS" >> "$DEBUG_LOG"
 
-# 마지막 assistant 메시지들 추출
-LAST_MESSAGES=$(tail -200 "$TRANSCRIPT_PATH" | \
+# 사용자 프롬프트 추출 (Agent 프롬프트 제외)
+USER_PROMPT=$(tail -500 "$TRANSCRIPT_PATH" | \
+    jq -r '
+        select(.type == "user" and .message.content != null) | 
+        if (.message.content | type) == "string" then 
+            .message.content 
+        else 
+            empty 
+        end
+    ' 2>/dev/null | \
+    grep -v "^Read the last" | \
+    grep -v "^Find all Claude" | \
+    grep -v "^Analyze" | \
+    tail -1 | \
+    head -c 1000)
+
+# Claude 응답 추출
+CLAUDE_RESPONSE=$(tail -200 "$TRANSCRIPT_PATH" | \
     jq -r '
         select(.type == "assistant" and .message.content != null) | 
         .message.content[] | 
         select(.type == "text") | 
         .text
     ' 2>/dev/null | \
-    tail -5 | \
-    awk 'NR>1{print "\n"} {print}' | \
-    head -c 3000)
+    tail -1 | \
+    head -c 2000)
 
-echo "Messages found: ${#LAST_MESSAGES} chars" >> "$DEBUG_LOG"
+echo "User prompt: ${#USER_PROMPT} chars" >> "$DEBUG_LOG"
+echo "Claude response: ${#CLAUDE_RESPONSE} chars" >> "$DEBUG_LOG"
 
-# Tool 사용 추출은 제거 (명령어와 파일 섹션 제거 요청에 따라)
-
-# Tool 결과에서 에러 확인
-ERRORS=$(tail -100 "$TRANSCRIPT_PATH" | \
-    jq -r '
-        select(.type == "user" and .toolUseResult != null and (.toolUseResult | contains("Error"))) |
-        .toolUseResult
-    ' 2>/dev/null | \
-    tail -3 | \
-    sed 's/^/⚠️ /')
-
-# 요약 정보 추출 (있다면)
-SUMMARY_INFO=$(jq -r 'select(.type == "summary") | .summary' "$TRANSCRIPT_PATH" 2>/dev/null | tail -1)
-
-# 통계 (에러만 유지)
-ERROR_COUNT=$(echo "$ERRORS" | grep -c '^⚠️' 2>/dev/null || echo "0")
-
-# 작업 요약 생성
-if [ -n "$SUMMARY_INFO" ] && [ "$SUMMARY_INFO" != "null" ]; then
-    WORK_SUMMARY="📋 $SUMMARY_INFO"
-elif [ -n "$LAST_MESSAGES" ]; then
-    WORK_SUMMARY="$LAST_MESSAGES"
+# 작업 내용 구성
+if [ -n "$USER_PROMPT" ]; then
+    PROMPT_TEXT="💬 사용자 요청:\n$USER_PROMPT"
 else
-    WORK_SUMMARY="작업이 완료되었습니다."
+    PROMPT_TEXT="💬 사용자 요청:\n(요청 내용 없음)"
+fi
+
+if [ -n "$CLAUDE_RESPONSE" ]; then
+    RESPONSE_TEXT="🤖 Claude 응답:\n$CLAUDE_RESPONSE"
+else
+    RESPONSE_TEXT="🤖 Claude 응답:\n(응답 내용 없음)"
 fi
 
 # Slack 메시지 구성
+FIELDS_JSON='[
+    {
+        "type": "mrkdwn",
+        "text": "*프로젝트:*\n'"$PROJECT_NAME"'"
+    },
+    {
+        "type": "mrkdwn",
+        "text": "*시간:*\n'"${START_TIME_FORMATTED:-$SHORT_TIME}${END_TIME_FORMATTED:+ → $END_TIME_FORMATTED}"'"
+    }'
+
+# 토큰 정보 추가
+if [ -n "$TOTAL_TOKENS" ] && [ "$TOTAL_TOKENS" != "0" ]; then
+    FIELDS_JSON="${FIELDS_JSON},
+    {
+        \"type\": \"mrkdwn\",
+        \"text\": \"*토큰:*\\n${TOTAL_TOKENS}개\"
+    }"
+fi
+
+# 소요시간 정보 추가
+if [ -n "$ELAPSED_TIME" ]; then
+    FIELDS_JSON="${FIELDS_JSON},
+    {
+        \"type\": \"mrkdwn\",
+        \"text\": \"*소요시간:*\\n${ELAPSED_TIME}\"
+    }"
+fi
+
+FIELDS_JSON="${FIELDS_JSON}]"
+
 SLACK_JSON=$(cat <<EOF
 {
     "text": "✅ Claude Code 작업 완료 - $PROJECT_NAME",
@@ -162,24 +195,7 @@ SLACK_JSON=$(cat <<EOF
             "blocks": [
                 {
                     "type": "section",
-                    "fields": [
-                        {
-                            "type": "mrkdwn",
-                            "text": "*프로젝트:*\n$PROJECT_NAME"
-                        },
-                        {
-                            "type": "mrkdwn",
-                            "text": "*시간:*\n${START_TIME_FORMATTED:-$SHORT_TIME}${END_TIME_FORMATTED:+ → $END_TIME_FORMATTED}"
-                        }${TOTAL_TOKENS:+,
-                        {
-                            "type": "mrkdwn",
-                            "text": "*토큰:*\n${TOTAL_TOKENS}개"
-                        }}${ELAPSED_TIME:+,
-                        {
-                            "type": "mrkdwn",
-                            "text": "*소요시간:*\n${ELAPSED_TIME}"
-                        }}
-                    ]
+                    "fields": $FIELDS_JSON
                 },
                 {
                     "type": "divider"
@@ -188,23 +204,18 @@ SLACK_JSON=$(cat <<EOF
                     "type": "section",
                     "text": {
                         "type": "mrkdwn",
-                        "text": "*📝 작업 내용:*\n\`\`\`${WORK_SUMMARY}\`\`\`"
+                        "text": "*$PROMPT_TEXT*"
+                    }
+                },
+                {
+                    "type": "section",
+                    "text": {
+                        "type": "mrkdwn",
+                        "text": "*$RESPONSE_TEXT*"
                     }
                 }
 EOF
 )
-
-# 에러가 있으면 추가
-if [ "$ERROR_COUNT" -gt 0 ] && [ -n "$ERRORS" ]; then
-    SLACK_JSON="${SLACK_JSON},
-                {
-                    \"type\": \"section\",
-                    \"text\": {
-                        \"type\": \"mrkdwn\",
-                        \"text\": \"*⚠️ 발생한 에러:*\n\`\`\`${ERRORS}\`\`\`\"
-                    }
-                }"
-fi
 
 # Footer
 SLACK_JSON="${SLACK_JSON},
@@ -222,10 +233,20 @@ SLACK_JSON="${SLACK_JSON},
     ]
 }"
 
-# Slack 전송
-echo "$SLACK_JSON" | curl -s -X POST -H 'Content-type: application/json' --data @- "$SLACK_WEBHOOK_URL"
+# JSON 디버깅용 저장
+echo "$SLACK_JSON" > "$HOME/claude-stop-debug-json.log"
 
-echo "Notification sent successfully" >> "$DEBUG_LOG"
+# Slack 전송
+CURL_RESPONSE=$(echo "$SLACK_JSON" | curl -s -X POST -H 'Content-type: application/json' --data @- "$SLACK_WEBHOOK_URL" -w "\n%{http_code}")
+HTTP_CODE=$(echo "$CURL_RESPONSE" | tail -n1)
+RESPONSE_BODY=$(echo "$CURL_RESPONSE" | head -n-1)
+
+if [ "$HTTP_CODE" = "200" ]; then
+    echo "Notification sent successfully (HTTP $HTTP_CODE)" >> "$DEBUG_LOG"
+else
+    echo "Notification failed! HTTP code: $HTTP_CODE" >> "$DEBUG_LOG"
+    echo "Response: $RESPONSE_BODY" >> "$DEBUG_LOG"
+fi
 echo "---" >> "$DEBUG_LOG"
 
 exit 0
