@@ -6,3 +6,14 @@ curl: (56) The requested URL returned error: 404 | 문제 제대로 고민해서
 ---
 [2025-07-02 17:13:30] claude-slack-config 실행시키면 nano 말고 vim 뜨면 좋겠어 왜 나노가 뜨냐... ㅠㅠ 그리고 그냥 파일 안 뜨고 복붙해서 넣을수 있게 바꾸는거 어려워? 안 어려우면 그냥 쉘에서 할 수 있게 하게
 ---
+[2025-07-03 13:16:45] Please update the stop-hook.sh file to change the Slack message format according to these requirements:
+
+1. Remove the duplicate "작업 완료" message (keep only the one in the title)
+2. Remove the "명령어:" and "파일:" sections entirely
+3. Add "토큰:" section to show token usage
+4. Add "소요시간:" section to show elapsed time
+
+The token information should come from the JSON input's metadata.usage field, and the elapsed time should be calculated from the start_time in the JSON.
+
+Make sure to properly parse the JSON input to extract these values and format the Slack message accordingly.
+---

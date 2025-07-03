@@ -1,5 +1,27 @@
 # 🔔 Claude Code Slack Notifier
 
+## 📋 할일 리스트 (TODO)
+- [ ] 다국어 지원 확장 (중국어, 일본어 등)
+- [ ] 웹훅 프록시 기능 구현
+- [ ] 알림 필터링 고급 옵션 추가
+- [ ] 팀 공유 설정 기능 개선
+
+## 🚧 진행 중인 작업 (In Progress)
+(현재 진행 중인 작업 없음)
+
+## ✅ 완료된 작업 (Completed)
+- stop-hook.sh 업데이트 완료 (완료: 2025-07-03 13:18)
+  - 메타데이터에서 토큰 정보 추출 기능 추가
+  - start_time 기반 소요시간 계산 로직 구현
+  - Slack 메시지 포맷 개선 (명령어/파일 통계 제거, 토큰/소요시간 추가)
+
+## 📝 작업 기록 (Work Log)
+### 2025-07-03
+- stop-hook.sh 파일의 Slack 메시지 형식을 사용자 요구사항에 맞게 개선
+- JSON 입력의 metadata.usage 필드에서 토큰 정보 추출하도록 수정
+- start_time과 end_time을 이용한 소요시간 계산 기능 추가
+- 불필요한 명령어/파일 통계 섹션 제거로 메시지 간소화
+
 <p align="center">
   <img src="https://img.shields.io/badge/Claude_Code-Compatible-blue?style=for-the-badge" alt="Claude Code Compatible">
   <img src="https://img.shields.io/badge/Slack-Integration-4A154B?style=for-the-badge&logo=slack" alt="Slack Integration">

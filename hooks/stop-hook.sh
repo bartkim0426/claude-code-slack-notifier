@@ -34,6 +34,10 @@ SESSION_ID=$(echo "$INPUT" | jq -r '.session_id // ""')
 TRANSCRIPT_PATH=$(echo "$INPUT" | jq -r '.transcript_path // ""')
 IS_HOOK_ACTIVE=$(echo "$INPUT" | jq -r '.stop_hook_active // false')
 
+# 메타데이터에서 토큰 사용량과 시작 시간 추출
+METADATA_USAGE=$(echo "$INPUT" | jq -r '.metadata.usage // null')
+START_TIME_FROM_META=$(echo "$INPUT" | jq -r '.start_time // null')
+
 # 디버깅
 echo "=== Stop Hook at $FULL_TIME ===" >> "$DEBUG_LOG"
 echo "Session: $SESSION_ID" >> "$DEBUG_LOG"
@@ -51,26 +55,62 @@ if [ ! -f "$TRANSCRIPT_PATH" ]; then
 fi
 
 # 시작 시간과 종료 시간 추출
-START_TIME=$(head -5 "$TRANSCRIPT_PATH" | jq -r 'select(.timestamp != null) | .timestamp' 2>/dev/null | head -1)
+# 메타데이터의 start_time 우선 사용
+if [ "$START_TIME_FROM_META" != "null" ] && [ -n "$START_TIME_FROM_META" ]; then
+    START_TIME="$START_TIME_FROM_META"
+else
+    START_TIME=$(head -5 "$TRANSCRIPT_PATH" | jq -r 'select(.timestamp != null) | .timestamp' 2>/dev/null | head -1)
+fi
 END_TIME=$(tail -5 "$TRANSCRIPT_PATH" | jq -r 'select(.timestamp != null) | .timestamp' 2>/dev/null | tail -1)
 
 # 시간 포맷팅
 if [ -n "$START_TIME" ] && [ "$START_TIME" != "null" ]; then
     START_TIME_FORMATTED=$(date -j -f "%Y-%m-%dT%H:%M:%S" "${START_TIME%%.*}" "+%H:%M" 2>/dev/null || echo "")
+    START_TIME_EPOCH=$(date -j -f "%Y-%m-%dT%H:%M:%S" "${START_TIME%%.*}" "+%s" 2>/dev/null || echo "")
 else
     START_TIME_FORMATTED=""
+    START_TIME_EPOCH=""
 fi
 
 if [ -n "$END_TIME" ] && [ "$END_TIME" != "null" ]; then
     END_TIME_FORMATTED=$(date -j -f "%Y-%m-%dT%H:%M:%S" "${END_TIME%%.*}" "+%H:%M" 2>/dev/null || echo "")
+    END_TIME_EPOCH=$(date -j -f "%Y-%m-%dT%H:%M:%S" "${END_TIME%%.*}" "+%s" 2>/dev/null || echo "")
 else
     END_TIME_FORMATTED=""
+    END_TIME_EPOCH=""
 fi
 
-# 토큰 사용량 추출
-TOTAL_TOKENS=$(tail -200 "$TRANSCRIPT_PATH" | \
-    jq -r 'select(.message.usage != null) | .message.usage | (.input_tokens // 0) + (.output_tokens // 0)' 2>/dev/null | \
-    awk '{sum+=$1} END {print sum}')
+# 소요 시간 계산
+ELAPSED_TIME=""
+if [ -n "$START_TIME_EPOCH" ] && [ -n "$END_TIME_EPOCH" ]; then
+    ELAPSED_SECONDS=$((END_TIME_EPOCH - START_TIME_EPOCH))
+    if [ $ELAPSED_SECONDS -ge 0 ]; then
+        HOURS=$((ELAPSED_SECONDS / 3600))
+        MINUTES=$(((ELAPSED_SECONDS % 3600) / 60))
+        SECONDS=$((ELAPSED_SECONDS % 60))
+        
+        if [ $HOURS -gt 0 ]; then
+            ELAPSED_TIME="${HOURS}시간 ${MINUTES}분"
+        elif [ $MINUTES -gt 0 ]; then
+            ELAPSED_TIME="${MINUTES}분 ${SECONDS}초"
+        else
+            ELAPSED_TIME="${SECONDS}초"
+        fi
+    fi
+fi
+
+# 토큰 사용량 추출 - 메타데이터 우선, 없으면 transcript에서 추출
+if [ "$METADATA_USAGE" != "null" ] && [ -n "$METADATA_USAGE" ]; then
+    # 메타데이터에서 토큰 정보 추출
+    TOTAL_TOKENS=$(echo "$METADATA_USAGE" | jq -r '(.input_tokens // 0) + (.output_tokens // 0) + (.cache_read_input_tokens // 0) + (.cache_creation_input_tokens // 0)')
+else
+    # transcript에서 토큰 정보 추출
+    TOTAL_TOKENS=$(tail -200 "$TRANSCRIPT_PATH" | \
+        jq -r 'select(.message.usage != null) | .message.usage | (.input_tokens // 0) + (.output_tokens // 0) + (.cache_read_input_tokens // 0) + (.cache_creation_input_tokens // 0)' 2>/dev/null | \
+        awk '{sum+=$1} END {print sum}')
+fi
+
+echo "Total tokens calculated: $TOTAL_TOKENS" >> "$DEBUG_LOG"
 
 # 마지막 assistant 메시지들 추출
 LAST_MESSAGES=$(tail -200 "$TRANSCRIPT_PATH" | \
@@ -86,29 +126,7 @@ LAST_MESSAGES=$(tail -200 "$TRANSCRIPT_PATH" | \
 
 echo "Messages found: ${#LAST_MESSAGES} chars" >> "$DEBUG_LOG"
 
-# Tool 사용 추출 - Bash 명령어
-BASH_COMMANDS=$(tail -200 "$TRANSCRIPT_PATH" | \
-    jq -r '
-        select(.type == "assistant" and .message.content != null) |
-        .message.content[] |
-        select(.type == "tool_use" and .name == "bash") |
-        .input.command // empty
-    ' 2>/dev/null | \
-    grep -v '^$' | \
-    tail -5 | \
-    sed 's/^/• /')
-
-# Tool 사용 추출 - 파일 작업
-FILE_OPERATIONS=$(tail -200 "$TRANSCRIPT_PATH" | \
-    jq -r '
-        select(.type == "assistant" and .message.content != null) |
-        .message.content[] |
-        select(.type == "tool_use" and (.name == "edit" or .name == "write" or .name == "str_replace")) |
-        "\(.name): \(.input.path // .input.file // "unknown")"
-    ' 2>/dev/null | \
-    grep -v '^$' | \
-    tail -10 | \
-    sed 's/^/• /')
+# Tool 사용 추출은 제거 (명령어와 파일 섹션 제거 요청에 따라)
 
 # Tool 결과에서 에러 확인
 ERRORS=$(tail -100 "$TRANSCRIPT_PATH" | \
@@ -122,9 +140,7 @@ ERRORS=$(tail -100 "$TRANSCRIPT_PATH" | \
 # 요약 정보 추출 (있다면)
 SUMMARY_INFO=$(jq -r 'select(.type == "summary") | .summary' "$TRANSCRIPT_PATH" 2>/dev/null | tail -1)
 
-# 통계
-COMMAND_COUNT=$(echo "$BASH_COMMANDS" | grep -c '^•' 2>/dev/null || echo "0")
-FILE_COUNT=$(echo "$FILE_OPERATIONS" | grep -c '^•' 2>/dev/null || echo "0")
+# 통계 (에러만 유지)
 ERROR_COUNT=$(echo "$ERRORS" | grep -c '^⚠️' 2>/dev/null || echo "0")
 
 # 작업 요약 생성
@@ -145,7 +161,6 @@ SLACK_JSON=$(cat <<EOF
             "color": "#36a64f",
             "blocks": [
                 {
-                {
                     "type": "section",
                     "fields": [
                         {
@@ -159,6 +174,10 @@ SLACK_JSON=$(cat <<EOF
                         {
                             "type": "mrkdwn",
                             "text": "*토큰:*\n${TOTAL_TOKENS}개"
+                        }}${ELAPSED_TIME:+,
+                        {
+                            "type": "mrkdwn",
+                            "text": "*소요시간:*\n${ELAPSED_TIME}"
                         }}
                     ]
                 },
@@ -174,37 +193,6 @@ SLACK_JSON=$(cat <<EOF
                 }
 EOF
 )
-
-# 통계 섹션 추가 (명령어나 파일 작업이 있을 때만)
-if [ "$COMMAND_COUNT" -gt 0 ] || [ "$FILE_COUNT" -gt 0 ]; then
-    SLACK_JSON="${SLACK_JSON},
-                {
-                    \"type\": \"section\",
-                    \"fields\": ["
-    
-    if [ "$COMMAND_COUNT" -gt 0 ]; then
-        SLACK_JSON="${SLACK_JSON}
-                        {
-                            \"type\": \"mrkdwn\",
-                            \"text\": \"*명령어:*\n${COMMAND_COUNT}개\"
-                        }"
-        if [ "$FILE_COUNT" -gt 0 ]; then
-            SLACK_JSON="${SLACK_JSON},"
-        fi
-    fi
-    
-    if [ "$FILE_COUNT" -gt 0 ]; then
-        SLACK_JSON="${SLACK_JSON}
-                        {
-                            \"type\": \"mrkdwn\",
-                            \"text\": \"*파일:*\n${FILE_COUNT}개\"
-                        }"
-    fi
-    
-    SLACK_JSON="${SLACK_JSON}
-                    ]
-                }"
-fi
 
 # 에러가 있으면 추가
 if [ "$ERROR_COUNT" -gt 0 ] && [ -n "$ERRORS" ]; then
